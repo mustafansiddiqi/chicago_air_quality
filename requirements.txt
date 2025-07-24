@@ -1,8 +1,10 @@
 streamlit
-streamlit-folium
 geopandas
 pandas
+numpy
+scikit-learn
 shapely
 folium
-fiona
-pyproj
+requests
+branca
+streamlit-folium
