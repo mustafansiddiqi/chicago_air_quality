@@ -159,7 +159,7 @@ colormap = cm.LinearColormap(
 )
 
 # Create Folium map
-m = folium.Map(location=[41.8781, -87.6298], zoom_start=11, tiles="openstreetmap")
+m = folium.Map(location=[41.8781, -87.6298], zoom_start=11, tiles="cartodbpositron")
 
 for _, row in neighborhoods.iterrows():
     name = row["neighborhood"]
