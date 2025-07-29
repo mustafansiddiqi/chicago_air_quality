@@ -8,6 +8,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 import branca.colormap as cm
 from datetime import datetime, timedelta
+from geopy.geocoders import Nominatim
 
 # CONFIG
 st.set_page_config(page_title="Chicago AQI Map", layout="wide")
@@ -60,7 +61,17 @@ coords = np.array([[pt.y, pt.x] for pt in neighborhoods["centroid"]])
 tree = build_ball_tree(coords)
 
 # PAGE TABS
-tab1, tab2, tab3 = st.tabs(["Current", "Forecast (24h Avg)", "Historic (Date Range)"])
+tab1, tab2, tab3, tab4 = st.tabs(["Current", "My Location", "Forecast (24h Avg)", "Historic (Date Range)"])
+
+# AQI descriptive labels
+def aqi_description(aqi):
+    return {
+        1: "Good",
+        2: "Fair",
+        3: "Moderate",
+        4: "Poor",
+        5: "Very Poor"
+    }.get(aqi, "Unknown")
 
 def extract_values(aqi_data, pollutant, mode):
     key = pollutant_key_map(pollutant)
@@ -91,7 +102,8 @@ def make_map(aqi_mode, aqi_data_list, title_suffix):
 
         if aq:
             if aqi_mode == "current":
-                html += f"AQI Index: {aq[0]['main']['aqi']}<br>"
+                aqi_index = aq[0]['main']['aqi']
+                html += f"AQI Index: {aqi_index} ({aqi_description(aqi_index)})<br>"
             for p in selected_pollutants:
                 pval = extract_values(aq, p, aqi_mode)
                 html += f"{p.upper()}: {round(pval, 2) if pval else 'N/A'}<br>"
@@ -113,6 +125,7 @@ def make_map(aqi_mode, aqi_data_list, title_suffix):
             [row["centroid"].y, row["centroid"].x],
             icon=folium.DivIcon(html=f"<div style='font-size:8pt;color:black'>{name}</div>")
         ).add_to(m)
+
     colormap.add_to(m)
     st_folium(m, width=1100, height=750)
 
@@ -122,11 +135,36 @@ with tab1:
     make_map("current", current_data, "Current")
 
 with tab2:
+    st.subheader("My Location")
+    address = st.text_input("Enter your address or zip code:")
+    if address:
+        geolocator = Nominatim(user_agent="aqi_chicago")
+        location = geolocator.geocode(address)
+        if location:
+            lat, lon = location.latitude, location.longitude
+            personal_data = fetch_aqi(lat, lon, "current")
+            m = folium.Map(location=[lat, lon], zoom_start=13, tiles="cartodbpositron")
+            if personal_data:
+                comp = personal_data[0]["components"]
+                aqi_index = personal_data[0]['main']['aqi']
+                html = f"<b>Your Location</b><br>"
+                html += f"AQI Index: {aqi_index} ({aqi_description(aqi_index)})<br>"
+                for p in pollutants:
+                    val = comp.get(pollutant_key_map(p))
+                    html += f"{p.upper()}: {round(val, 2) if val else 'N/A'}<br>"
+                folium.Marker([lat, lon], tooltip=html, icon=folium.Icon(color='blue', icon='info-sign')).add_to(m)
+                st_folium(m, width=1100, height=600)
+            else:
+                st.warning("No AQI data available for this location.")
+        else:
+            st.warning("Address not found.")
+
+with tab3:
     st.subheader("24-Hour Forecast Average")
     forecast_data = [fetch_aqi(row["centroid"].y, row["centroid"].x, "forecast")[:24] for _, row in neighborhoods.iterrows()]
     make_map("forecast", forecast_data, "24h Forecast")
 
-with tab3:
+with tab4:
     st.subheader("Historic AQI Average")
     start_date = st.date_input("Start Date", datetime.today() - timedelta(days=2), max_value=datetime.today())
     end_date = st.date_input("End Date", datetime.today(), min_value=start_date, max_value=datetime.today())
