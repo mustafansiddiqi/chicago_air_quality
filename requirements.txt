@@ -8,3 +8,4 @@ folium
 requests
 branca
 streamlit-folium
+geopy
