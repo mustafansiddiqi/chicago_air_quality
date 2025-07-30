@@ -47,7 +47,7 @@ def build_ball_tree(coords):
     return BallTree(np.radians(coords), metric='haversine')
 
 # UI HEADER
-st.markdown("<h1 style='text-align: center;'>🌇 Chicago Neighborhood Air Quality Map</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>Air Quality Map of Chicago</h1>", unsafe_allow_html=True)
 st.markdown("---")
 
 # FILTERS
